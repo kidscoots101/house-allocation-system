@@ -16,7 +16,7 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
           Arial, sans-serif;
         background: #ffffff;
-        color: #202A44;
+        color: #202a44;
         line-height: 1.6;
       }
 
@@ -42,7 +42,7 @@
 
       .subtitle {
         font-size: 26px;
-        color: #202A44;
+        color: #202a44;
         margin-top: 12px;
         font-weight: 500;
         letter-spacing: -0.3px;
@@ -58,9 +58,9 @@
       }
 
       button {
-        background: #202A44;
+        background: #202a44;
         color: #ffffff;
-        border: 2px solid #202A44;
+        border: 2px solid #202a44;
         padding: 16px 36px;
         font-size: 16px;
         font-weight: 700;
@@ -74,7 +74,7 @@
 
       button:hover:not(:disabled) {
         background: #ffffff;
-        color: #202A44;
+        color: #202a44;
         transform: translateY(-3px);
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
       }
@@ -86,7 +86,7 @@
       button:disabled {
         background: #e6e6e6;
         border-color: #e6e6e6;
-        color: #202A44;
+        color: #202a44;
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
@@ -95,12 +95,13 @@
 
       button.secondary {
         background: #ffffff;
-        color: #202A44;
-        border: 2px solid #202A44;
+        color: #202a44;
+        border: 2px solid #202a44;
+        width: 400px;
       }
 
       button.secondary:hover:not(:disabled) {
-        background: #202A44;
+        background: #202a44;
         color: #ffffff;
       }
 
@@ -120,9 +121,9 @@
       }
 
       .file-input-label {
-        background: #ffffff;
-        color: #202A44;
-        border: 2px solid #202A44;
+        background: #202a44;
+        color: #ffffff;
+        border: 2px solid #202a44;
         padding: 16px 36px;
         font-size: 16px;
         font-weight: 700;
@@ -135,8 +136,8 @@
       }
 
       .file-input-label:hover {
-        background: #202A44;
-        color: #ffffff;
+        background: #ffffff;
+        color: #202a44;
         transform: translateY(-3px);
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
       }
@@ -145,7 +146,7 @@
         text-align: center;
         padding: 20px;
         margin-bottom: 30px;
-        border: 2px solid #202A44;
+        border: 2px solid #202a44;
         background: #f9f9f9;
         font-weight: 600;
         font-size: 16px;
@@ -185,7 +186,7 @@
         width: 100px;
         height: 100px;
         border: 4px solid #e6e6e6;
-        border-top: 4px solid #202A44;
+        border-top: 4px solid #202a44;
         border-radius: 50%;
         animation: spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
       }
@@ -205,7 +206,7 @@
         font-weight: 800;
         letter-spacing: -0.8px;
         animation: pulse 2s ease-in-out infinite;
-        color: #1a2b56 ;
+        color: #1a2b56;
       }
 
       @keyframes pulse {
@@ -234,7 +235,7 @@
       }
 
       .house-column {
-        border: 2px solid #202A44;
+        border: 2px solid #202a44;
         background: #ffffff;
         border-radius: 2px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -273,7 +274,7 @@
       }
 
       .house-header {
-        background: #202A44;
+        background: #202a44;
         color: #ffffff;
         padding: 28px 20px 20px 20px;
         text-align: center;
@@ -306,7 +307,7 @@
       }
 
       .house-members::-webkit-scrollbar-thumb {
-        background: #202A44;
+        background: #202a44;
         border-radius: 3px;
       }
 
@@ -340,7 +341,7 @@
         font-weight: 800;
         /* margin-bottom: 40px; */
         padding: 28px 32px;
-        border: 2px solid #202A44;
+        border: 2px solid #202a44;
         background: #f9f9f9;
         border-radius: 2px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -349,7 +350,7 @@
 
       .info-box {
         background: #f9f9f9;
-        border: 2px solid #202A44;
+        border: 2px solid #202a44;
         padding: 32px;
         margin-bottom: 10px;
         border-radius: 2px;
@@ -364,7 +365,7 @@
       }
 
       .info-box p {
-        color: #202A44;
+        color: #202a44;
         font-size: 16px;
         line-height: 1.8;
         font-weight: 500;
@@ -447,7 +448,7 @@
             <strong>Phase 2 (28 Nov):</strong> Upload Phase 1 results CSV and
             allocate remaining positions. Download complete allocation.
           </p>
-          <p style="margin-top: 16px; color: #202A44">
+          <p style="margin-top: 16px; color: #202a44">
             <strong>Note:</strong> All processes run locally on this device. No
             data is stored externally.
           </p>
@@ -488,18 +489,17 @@
           </div>
         </div>
 
-        <div class="controls">
-          <button id="startPhase1Btn" class="secondary">
-            🎲 Start Phase 1 Draw
-          </button>
-        </div>
-
         <div id="statusPhase1" class="status" style="display: none"></div>
         <div
           id="phaseIndicatorPhase1"
           class="phase-indicator"
           style="display: none"
         ></div>
+        <div class="controls">
+          <button id="startPhase1Btn" class="secondary">
+            🎲 Start Phase 1 Draw
+          </button>
+        </div>
 
         <div id="resultsPhase1">
           <div class="houses-grid" id="housesGridPhase1"></div>
@@ -565,16 +565,25 @@
         </div>
       </div>
       <footer
-          style="
-            text-align: center;
+        style="
+          position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to right, #ffffff, #f2f2f9);
             color: #1a2b56;
-            font-size: 0.9rem;
-          "
-        >
-        <strong>
-            Done by Caleb Han (25S22)
-        </strong>
-        </footer>
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 700;
+            text-decoration: underline;
+            padding: 8px 0;
+            border-top: 2px solid #1a2b56;
+            box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+            z-index: 2000;
+        "
+      >
+        <strong> Done by Han Jeong Seu, Caleb (25S22) </strong>
+      </footer>
     </div>
 
     <div id="animationScreen" class="animation-screen">
@@ -927,7 +936,10 @@
 
           const hdr = document.createElement("div");
           hdr.className = "house-header";
-          hdr.innerHTML = `${house}<div class="house-count">${members.length} staff</div>`;
+          hdr.innerHTML = `
+      <img src="./${house}.png" alt="${house}" style="width:100%; max-height:200px; object-fit:cover; border-bottom:0px solid #fff;">
+      <div class="house-count">${members.length} staff</div>
+    `;
 
           const list = document.createElement("div");
           list.className = "house-members";
@@ -976,7 +988,10 @@
 
           const hdr = document.createElement("div");
           hdr.className = "house-header";
-          hdr.innerHTML = `${house}<div class="house-count">${members.length} staff</div>`;
+          hdr.innerHTML = `
+      <img src="./${house}.png" alt="${house}" style="width:100%; max-height:200px; object-fit:cover; border-bottom:0px solid #fff;">
+      <div class="house-count">${members.length} staff</div>
+    `;
 
           const list = document.createElement("div");
           list.className = "house-members";
@@ -1022,7 +1037,9 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `allocation_phase1_${new Date().toISOString().split("T")[0]}.csv`;
+        a.download = `allocation_phase1_${
+          new Date().toISOString().split("T")[0]
+        }.csv`;
         a.click();
         URL.revokeObjectURL(url);
 
@@ -1045,7 +1062,9 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `allocation_phase2_${new Date().toISOString().split("T")[0]}.csv`;
+        a.download = `allocation_phase2_${
+          new Date().toISOString().split("T")[0]
+        }.csv`;
         a.click();
         URL.revokeObjectURL(url);
 
