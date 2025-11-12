@@ -49,7 +49,6 @@
       .house-members::-webkit-scrollbar { width: 6px; }
       .house-members::-webkit-scrollbar-track { background: #f5f5f5; }
       .house-members::-webkit-scrollbar-thumb { background: #202a44; border-radius: 3px; }
-      
       .member { padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-size: 17px; font-weight: 500; animation: slideIn 0.4s ease-out backwards; letter-spacing: -0.1px; }
       @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
       .member:last-child { border-bottom: none; }
@@ -480,53 +479,68 @@
          Department-balanced allocation
          balance=true tries to equalize overall house counts
          ------------------------- */
-      function allocateByDept(staff, balance) {
-        const groups = {};
-        staff.forEach(s => {
-          if (!groups[s.dept]) groups[s.dept] = [];
-          groups[s.dept].push(s);
-        });
+        function allocateByDept(staff, balance) {
+  const groups = {};
+  staff.forEach(s => {
+    if (!groups[s.dept]) groups[s.dept] = [];
+    groups[s.dept].push(s);
+  });
 
-        Object.entries(groups).forEach(([dept, members]) => {
-          const N = members.length;
-          // count existing dept members per house (from current allocatedData)
-          const cnt = {};
-          houses.forEach(h => {
-            cnt[h] = allocatedData.filter(m => m.house === h && m.dept === dept).length;
-          });
+  Object.entries(groups).forEach(([dept, members]) => {
+    const N = members.length;
+    const cnt = {};
+    houses.forEach(h => cnt[h] = allocatedData.filter(m => m.house === h && m.dept === dept).length);
 
-          shuffle([...members]).forEach(m => {
-            let h;
-            if (N <= 6) {
-              const avail = houses.filter(x => cnt[x] === 0);
-              h = avail.length ? avail[Math.floor(Math.random() * avail.length)] : houses[Math.floor(Math.random() * houses.length)];
-            } else {
-              const max = Math.ceil(N / 6);
-              const avail = houses.filter(x => cnt[x] < max);
-              if (avail.length) {
-                if (balance) {
-                  // prefer house with smallest overall total members
-                  const hc = avail.map(x => ({ h: x, c: allocatedData.filter(s => s.house === x).length }));
-                  hc.sort((a,b) => a.c - b.c);
-                  h = hc[0].h;
-                } else {
-                  h = avail[Math.floor(Math.random() * avail.length)];
-                }
-              } else {
-                h = houses[Math.floor(Math.random() * houses.length)];
-              }
-            }
-            m.house = h;
-            cnt[h]++;
-            // ensure allocatedData is updated (if m is from phase2Data we need to reflect this change)
-            const idx = allocatedData.findIndex(x => x.sn === m.sn && x.name === m.name);
-            if (idx !== -1) allocatedData[idx] = { ...m };
-            else allocatedData.push({ ...m });
-          });
-        });
-      }
+    // shuffle members first for randomness
+    shuffle(members);
 
-      /* -------------------------
+    if (N <= 6) {
+      // ≤6: assign at most one per house
+      members.forEach(m => {
+        const avail = houses.filter(h => cnt[h] === 0);
+        const h = avail.length ? avail[Math.floor(Math.random() * avail.length)] : houses[Math.floor(Math.random() * houses.length)];
+        m.house = h;
+        cnt[h]++;
+        const idxAllocated = allocatedData.findIndex(x => x.sn === m.sn && x.name === m.name);
+        if (idxAllocated !== -1) allocatedData[idxAllocated] = { ...m };
+        else allocatedData.push({ ...m });
+      });
+    } else {
+      // >6: distribute evenly across houses
+      const base = Math.floor(N / 6);   // minimum per house
+      let remainder = N % 6;            // extra to distribute
+
+      // Build exact counts per house
+      const houseCounts = houses.map(h => base);
+
+      // randomly assign the remainder
+      const extraHouses = shuffle([...houses]).slice(0, remainder);
+      extraHouses.forEach(h => {
+        houseCounts[houses.indexOf(h)] += 1;
+      });
+
+      // Now assign members to houses while randomising positions
+      const assignmentArray = [];
+      houses.forEach((h, i) => {
+        for (let j = 0; j < houseCounts[i]; j++) {
+          assignmentArray.push(h);
+        }
+      });
+
+      shuffle(assignmentArray); // shuffle house assignment order
+
+      members.forEach((m, idx) => {
+        m.house = assignmentArray[idx];
+        const idxAllocated = allocatedData.findIndex(x => x.sn === m.sn && x.name === m.name);
+        if (idxAllocated !== -1) allocatedData[idxAllocated] = { ...m };
+        else allocatedData.push({ ...m });
+        cnt[m.house]++;
+      });
+    }
+  });
+}
+
+         /* -------------------------
          Utility: Fisher-Yates shuffle
          ------------------------- */
       function shuffle(arr) {
