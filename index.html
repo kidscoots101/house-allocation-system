@@ -87,6 +87,7 @@
 }
 
 
+
       footer { position: fixed; bottom: 0; left: 0; width: 100%; background: linear-gradient(to right, #ffffff, #f2f2f9); color: #1a2b56; text-align: center; font-size: 1rem; font-weight: 700; text-decoration: underline; padding: 8px 0; border-top: 2px solid #1a2b56; box-shadow: 0 -2px 6px rgba(0,0,0,0.08); z-index: 2000; }
     </style>
   </head>
@@ -466,20 +467,31 @@
         showStatusPhase1("✅ Phase 1 Complete!");
       }
 
-      function performPhase2() {
-        // allocate unassigned staff from the uploaded Phase 1 results
-        // we treat phase2Data as the input for allocations
-        // ensure we have a copy to work with
-        allocatedData = phase2Data.map(s => ({ ...s }));
-        allocateByDept(allocatedData.filter(s => !s.house), true);
-        showStatusPhase2("✅ Phase 2 Complete!");
-      }
+    function performPhase2() {
+  // Use copy of phase2Data as working allocatedData, ensure generatedInPhase2 default false
+  allocatedData = phase2Data.map(s => ({ ...s, generatedInPhase2: false }));
+
+  // Allocate any staff without a house (balance=true to prioritise overall balancing)
+  allocateByDept(allocatedData.filter(s => !s.house), true);
+
+  // If any staff in allocatedData still lack house (fallback), assign them with balancing
+  const stillUnassigned = allocatedData.filter(s => !s.house);
+  if (stillUnassigned.length) {
+    allocateByDept(stillUnassigned, true);
+  }
+
+  showStatusPhase2("✅ Phase 2 Complete!");
+}
+
+
 
       /* -------------------------
          Department-balanced allocation
          balance=true tries to equalize overall house counts
          ------------------------- */
-        function allocateByDept(staff, balance) {
+       function allocateByDept(staff, balance) {
+  // staff: array of staff objects to allocate (usually filtered to those without house)
+  // balance: boolean; when true we prioritise overall house balancing (used in Phase 2)
   const groups = {};
   staff.forEach(s => {
     if (!groups[s.dept]) groups[s.dept] = [];
@@ -488,57 +500,111 @@
 
   Object.entries(groups).forEach(([dept, members]) => {
     const N = members.length;
-    const cnt = {};
-    houses.forEach(h => cnt[h] = allocatedData.filter(m => m.house === h && m.dept === dept).length);
 
-    // shuffle members first for randomness
+    // current per-house totals (ALL allocatedData, not just this dept)
+    const currentTotals = {};
+    houses.forEach(h => {
+      currentTotals[h] = allocatedData.filter(x => x.house === h).length;
+    });
+
+    // shuffle members to introduce randomness in who gets which slot
     shuffle(members);
 
     if (N <= 6) {
-      // ≤6: assign at most one per house
+      // At most one per house: pick among houses with 0 from this dept,
+      // but prefer houses with smaller overall totals to keep balance.
       members.forEach(m => {
-        const avail = houses.filter(h => cnt[h] === 0);
-        const h = avail.length ? avail[Math.floor(Math.random() * avail.length)] : houses[Math.floor(Math.random() * houses.length)];
-        m.house = h;
-        cnt[h]++;
+        // count of dept members per house
+        const deptCnt = {};
+        houses.forEach(h => {
+          deptCnt[h] = allocatedData.filter(x => x.house === h && x.dept === dept).length;
+        });
+
+        // candidate houses that have 0 for this dept
+        let candidates = houses.filter(h => deptCnt[h] === 0);
+        if (candidates.length === 0) {
+          // fallback: any house
+          candidates = [...houses];
+        }
+
+        // prefer houses with smallest overall totals
+        candidates.sort((a, b) => currentTotals[a] - currentTotals[b]);
+
+        // if many ties at the low end, choose randomly among the lowest tie set
+        const lowest = currentTotals[candidates[0]];
+        const tie = candidates.filter(h => currentTotals[h] === lowest);
+        const chosen = tie[Math.floor(Math.random() * tie.length)];
+
+        m.house = chosen;
+        // mark generatedInPhase2 if this allocation is happening in Phase 2
+        if (balance) m.generatedInPhase2 = true;
         const idxAllocated = allocatedData.findIndex(x => x.sn === m.sn && x.name === m.name);
         if (idxAllocated !== -1) allocatedData[idxAllocated] = { ...m };
         else allocatedData.push({ ...m });
+
+        currentTotals[chosen]++; // update totals for subsequent picks
       });
     } else {
-      // >6: distribute evenly across houses
-      const base = Math.floor(N / 6);   // minimum per house
-      let remainder = N % 6;            // extra to distribute
+      // N > 6: distribute exactly floor(N/6) to each house, distribute remainder among some houses
+      const base = Math.floor(N / 6);
+      let remainder = N % 6;
 
-      // Build exact counts per house
-      const houseCounts = houses.map(h => base);
+      // Build initial houseCounts = base for each house
+      const houseCounts = {};
+      houses.forEach(h => houseCounts[h] = base);
 
-      // randomly assign the remainder
-      const extraHouses = shuffle([...houses]).slice(0, remainder);
-      extraHouses.forEach(h => {
-        houseCounts[houses.indexOf(h)] += 1;
-      });
+      // randomly choose which houses get +1 for the remainder
+      const shuffledHouses = shuffle([...houses]);
+      for (let i = 0; i < remainder; i++) {
+        houseCounts[shuffledHouses[i]] += 1;
+      }
 
-      // Now assign members to houses while randomising positions
-      const assignmentArray = [];
-      houses.forEach((h, i) => {
-        for (let j = 0; j < houseCounts[i]; j++) {
-          assignmentArray.push(h);
-        }
-      });
+      // Now plan the assignment order so houses with smaller currentTotals
+      // get their slots earlier: we repeatedly pick the house (with remaining slots)
+      // that minimises (currentTotals[h] + assignedHereSoFar).
+      const remaining = { ...houseCounts }; // mutable copy
+      const assignedCounts = {};
+      houses.forEach(h => assignedCounts[h] = 0);
 
-      shuffle(assignmentArray); // shuffle house assignment order
+      const assignmentOrder = [];
+      const totalSlots = members.length;
+      for (let slot = 0; slot < totalSlots; slot++) {
+        // candidates are houses with at least 1 remaining slot
+        const candidates = houses.filter(h => remaining[h] > 0);
 
+        // compute metric = currentTotals[h] + assignedCounts[h]
+        let minMetric = Infinity;
+        candidates.forEach(h => {
+          const metric = currentTotals[h] + assignedCounts[h];
+          if (metric < minMetric) minMetric = metric;
+        });
+
+        // among candidates with minMetric, pick randomly to avoid deterministic pattern
+        const best = candidates.filter(h => (currentTotals[h] + assignedCounts[h]) === minMetric);
+        const chosen = best[Math.floor(Math.random() * best.length)];
+
+        assignmentOrder.push(chosen);
+        assignedCounts[chosen] += 1;
+        remaining[chosen] -= 1;
+      }
+
+      // assignmentOrder now has exactly N house slots in an order that favours balancing
       members.forEach((m, idx) => {
-        m.house = assignmentArray[idx];
+        const h = assignmentOrder[idx];
+        m.house = h;
+        // set marker when assigning in Phase 2
+        if (balance) m.generatedInPhase2 = true;
         const idxAllocated = allocatedData.findIndex(x => x.sn === m.sn && x.name === m.name);
         if (idxAllocated !== -1) allocatedData[idxAllocated] = { ...m };
         else allocatedData.push({ ...m });
-        cnt[m.house]++;
+
+        currentTotals[h]++; // keep totals updated
       });
     }
   });
 }
+
+
 
          /* -------------------------
          Utility: Fisher-Yates shuffle
@@ -589,10 +655,19 @@
           } else {
             members.forEach((s, idx) => {
               const m = document.createElement("div");
-              m.className = "member";
-              m.textContent = s.name;
-              m.style.animationDelay = `${0.35 + idx * 0.03}s`;
-              list.appendChild(m);
+  m.className = "member";
+  m.style.animationDelay = `${0.35 + idx * 0.03}s`;
+
+  if (s.generatedInPhase2) {
+    // create bolded name (keeps consistent styling)
+    const strong = document.createElement("strong");
+    strong.textContent = s.name;
+    m.appendChild(strong);
+  } else {
+    m.textContent = s.name;
+  }
+
+  list.appendChild(m);
             });
           }
 
@@ -638,10 +713,20 @@
           } else {
             members.forEach((s, idx) => {
               const m = document.createElement("div");
-              m.className = "member";
-              m.textContent = s.name;
-              m.style.animationDelay = `${0.35 + idx * 0.03}s`;
-              list.appendChild(m);
+  m.className = "member";
+  m.style.animationDelay = `${0.35 + idx * 0.03}s`;
+
+  if (s.generatedInPhase2) {
+    // create bolded name (keeps consistent styling)
+    const strong = document.createElement("strong");
+    strong.textContent = s.name;
+    strong.style.textDecoration = "underline";
+    m.appendChild(strong);
+  } else {
+    m.textContent = s.name;
+  }
+
+  list.appendChild(m);
             });
           }
 
