@@ -6,638 +6,230 @@
     <link rel="icon" type="image/jpg" href="./jpjc-logo.jpg" />
     <title>House Allocation System</title>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+      /* (unchanged main styling, with one tiny footer tweak) */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: #ffffff; color: #202a44; line-height: 1.6; }
+      .container { max-width: 1800px; margin: 0 auto; padding: 60px 40px 120px; } /* bottom padding to avoid footer overlap */
+      .header { text-align: center; padding-bottom: 20px; }
+      h1 { font-size: 64px; font-weight: 800; margin-bottom: 12px; letter-spacing: -1.5px; line-height: 1.1; color: #660033; }
+      .subtitle { font-size: 26px; color: #202a44; margin-top: 12px; font-weight: 500; letter-spacing: -0.3px; }
 
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
-          Arial, sans-serif;
-        background: #ffffff;
-        color: #202a44;
-        line-height: 1.6;
-      }
+      .controls { display: flex; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; margin-top: 20px; gap: 12px; }
+      button { background: #202a44; color: #ffffff; border: 2px solid #202a44; padding: 16px 36px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.25s cubic-bezier(0.4,0,0.2,1); font-family: inherit; letter-spacing: -0.3px; border-radius: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+      button:hover:not(:disabled) { background: #ffffff; color: #202a44; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
+      button:active:not(:disabled) { transform: translateY(-1px); }
+      button:disabled { background: #e6e6e6; border-color: #e6e6e6; color: #202a44; cursor: not-allowed; transform: none; box-shadow: none; opacity: 0.65; }
+      button.secondary { background: #ffffff; color: #202a44; border: 2px solid #202a44; width: 400px; }
+      button.secondary:hover:not(:disabled) { background: #202a44; color: #ffffff; }
+      button.phase-btn { padding: 30px; font-size: 18px; width: 490px; }
 
-      .container {
-        max-width: 1800px;
-        margin: 0 auto;
-        padding: 60px 40px;
-      }
+      .file-input-wrapper { display: inline-block; position: relative; }
+      .file-input-wrapper input[type="file"] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; } /* accessible click target */
+      .file-input-label { display: inline-block; padding: 16px 36px; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; border-radius: 2px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); background: #202a44; color: #fff; border: 2px solid #202a44; cursor: pointer; }
+      .file-input-label:hover { background: #fff; color: #202a44; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); }
 
-      .header {
-        text-align: center;
-        padding-bottom: 20px;
-      }
+      .status { text-align: center; padding: 20px; margin-bottom: 30px; border: 2px solid #202a44; background: #f9f9f9; font-weight: 600; font-size: 16px; border-radius: 2px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+      .animation-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+      .animation-screen.active { display: flex; animation: fadeIn 0.3s ease-out; }
+      @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+      .spinner { width: 100px; height: 100px; border: 4px solid #e6e6e6; border-top: 4px solid #202a44; border-radius: 50%; animation: spin 1.2s cubic-bezier(0.68,-0.55,0.265,1.55) infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
+      .animation-text { margin-top: 32px; font-size: 32px; font-weight: 800; letter-spacing: -0.8px; animation: pulse 2s ease-in-out infinite; color: #1a2b56; }
+      @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
 
-      h1 {
-        font-size: 64px;
-        font-weight: 800;
-        margin-bottom: 12px;
-        letter-spacing: -1.5px;
-        line-height: 1.1;
-        color: #660033;
-      }
+      .page { display: none; }
+      .page.active { display: block; }
 
-      .subtitle {
-        font-size: 26px;
-        color: #202a44;
-        margin-top: 12px;
-        font-weight: 500;
-        letter-spacing: -0.3px;
-      }
+      .houses-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 24px; margin-top: 40px; }
+      .house-column { border: 2px solid #202a44; background: #ffffff; border-radius: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; animation: slideUp 0.6s cubic-bezier(0.34,1.56,0.64,1) backwards; }
+      @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      .house-header { background: #202a44; color: #ffffff; padding: 28px 20px 20px 20px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: -0.8px; border-bottom: 2px solid #ffffff; }
+      .house-count { font-size: 18px; font-weight: 600; margin-top: 10px; opacity: 0.85; letter-spacing: -0.2px; }
+      .house-members { padding: 24px 18px; }
+      .house-members::-webkit-scrollbar { width: 6px; }
+      .house-members::-webkit-scrollbar-track { background: #f5f5f5; }
+      .house-members::-webkit-scrollbar-thumb { background: #202a44; border-radius: 3px; }
+      
+      .member { padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-size: 17px; font-weight: 500; animation: slideIn 0.4s ease-out backwards; letter-spacing: -0.1px; }
+      @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+      .member:last-child { border-bottom: none; }
 
-      .controls {
-        display: flex;
-        /* gap: 16px; */
-        justify-content: center;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-        margin-top: 20px;
-      }
+      .phase-indicator { text-align: center; font-size: 28px; font-weight: 800; padding: 28px 32px; border: 2px solid #202a44; background: #f9f9f9; border-radius: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); letter-spacing: -0.5px; }
+      .info-box { background: #f9f9f9; border: 2px solid #202a44; padding: 32px; margin-bottom: 10px; border-radius: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+      .info-box h3 { font-size: 22px; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.4px; }
+      .info-box p { color: #202a44; font-size: 16px; line-height: 1.8; font-weight: 500; margin-bottom: 8px; }
 
-      button {
-        background: #202a44;
-        color: #ffffff;
-        border: 2px solid #202a44;
-        padding: 16px 36px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        font-family: inherit;
-        letter-spacing: -0.3px;
-        border-radius: 2px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-      }
+      .phase-selection { display:flex; gap:24px; align-items:center; justify-content:center; margin-top:60px; padding-bottom:35px; }
+      .back-button { align-self: flex-start; padding: 12px 24px; font-size: 14px; margin-bottom: 20px; }
 
-      button:hover:not(:disabled) {
-        background: #ffffff;
-        color: #202a44;
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-      }
+      @media (max-width: 1400px) { .houses-grid { grid-template-columns: repeat(3,1fr); } }
+      @media (max-width: 900px) { .houses-grid { grid-template-columns: repeat(2,1fr); } .phase-btn { min-width: 100%; } }
+      @media (max-width: 600px) { .houses-grid { grid-template-columns: 1fr; } h1 { font-size: 48px; } .controls { gap: 12px; } button, .file-input-label { font-size: 14px; padding: 14px 28px; } .phase-btn { min-width: 100%; } }
 
-      button:active:not(:disabled) {
-        transform: translateY(-1px);
-      }
+      /* stack and centre for Phase 1 & Phase 2 — do NOT change element sizes */
+#phase1Page .controls,
+#phase2Page .controls {
+  flex-direction: column;   /* stack vertically */
+  align-items: center;      /* centre horizontally */
+  gap: 12px;
+}
 
-      button:disabled {
-        background: #e6e6e6;
-        border-color: #e6e6e6;
-        color: #202a44;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-        opacity: 0.65;
-      }
+/* keep the file input wrapper centered without changing its width */
+#phase1Page .file-input-wrapper,
+#phase2Page .file-input-wrapper {
+  display: flex;
+  justify-content: center;
+}
 
-      button.secondary {
-        background: #ffffff;
-        color: #202a44;
-        border: 2px solid #202a44;
-        width: 400px;
-      }
+/* centre the label text but do NOT override width */
+#phase1Page .file-input-label,
+#phase2Page .file-input-label {
+  text-align: center;
+}
 
-      button.secondary:hover:not(:disabled) {
-        background: #202a44;
-        color: #ffffff;
-      }
 
-      button.phase-btn {
-        padding: 30px;
-        font-size: 18px;
-        width: 490px;
-      }
-
-      .file-input-wrapper {
-        display: inline-block;
-      }
-
-      .file-input-wrapper input[type="file"] {
-        position: absolute;
-        left: -9999px;
-      }
-
-      .file-input-label {
-        background: #202a44;
-        color: #ffffff;
-        border: 2px solid #202a44;
-        padding: 16px 36px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        display: inline-block;
-        letter-spacing: -0.3px;
-        border-radius: 2px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-      }
-
-      .file-input-label:hover {
-        background: #ffffff;
-        color: #202a44;
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-      }
-
-      .status {
-        text-align: center;
-        padding: 20px;
-        margin-bottom: 30px;
-        border: 2px solid #202a44;
-        background: #f9f9f9;
-        font-weight: 600;
-        font-size: 16px;
-        border-radius: 2px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-      }
-
-      .animation-screen {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: #ffffff;
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-      }
-
-      .animation-screen.active {
-        display: flex;
-        animation: fadeIn 0.3s ease-out;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
-      }
-
-      .spinner {
-        width: 100px;
-        height: 100px;
-        border: 4px solid #e6e6e6;
-        border-top: 4px solid #202a44;
-        border-radius: 50%;
-        animation: spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-      }
-
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-
-      .animation-text {
-        margin-top: 32px;
-        font-size: 32px;
-        font-weight: 800;
-        letter-spacing: -0.8px;
-        animation: pulse 2s ease-in-out infinite;
-        color: #1a2b56;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.6;
-        }
-      }
-
-      .page {
-        display: none;
-      }
-
-      .page.active {
-        display: block;
-      }
-
-      .houses-grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 24px;
-        margin-top: 40px;
-      }
-
-      .house-column {
-        border: 2px solid #202a44;
-        background: #ffffff;
-        border-radius: 2px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-        animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
-      }
-
-      .house-column:nth-child(1) {
-        animation-delay: 0.05s;
-      }
-      .house-column:nth-child(2) {
-        animation-delay: 0.1s;
-      }
-      .house-column:nth-child(3) {
-        animation-delay: 0.15s;
-      }
-      .house-column:nth-child(4) {
-        animation-delay: 0.2s;
-      }
-      .house-column:nth-child(5) {
-        animation-delay: 0.25s;
-      }
-      .house-column:nth-child(6) {
-        animation-delay: 0.3s;
-      }
-
-      @keyframes slideUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .house-header {
-        background: #202a44;
-        color: #ffffff;
-        padding: 28px 20px 20px 20px;
-        text-align: center;
-        font-size: 36px;
-        font-weight: 800;
-        letter-spacing: -0.8px;
-        border-bottom: 2px solid #ffffff;
-      }
-
-      .house-count {
-        font-size: 18px;
-        font-weight: 600;
-        margin-top: 10px;
-        opacity: 0.85;
-        letter-spacing: -0.2px;
-      }
-
-      .house-members {
-        padding: 24px 18px;
-        max-height: 65vh;
-        overflow-y: auto;
-      }
-
-      .house-members::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .house-members::-webkit-scrollbar-track {
-        background: #f5f5f5;
-      }
-
-      .house-members::-webkit-scrollbar-thumb {
-        background: #202a44;
-        border-radius: 3px;
-      }
-
-      .member {
-        padding: 12px 0;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 17px;
-        font-weight: 500;
-        animation: slideIn 0.4s ease-out backwards;
-        letter-spacing: -0.1px;
-      }
-
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateX(-8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
-      }
-
-      .member:last-child {
-        border-bottom: none;
-      }
-
-      .phase-indicator {
-        text-align: center;
-        font-size: 28px;
-        font-weight: 800;
-        /* margin-bottom: 40px; */
-        padding: 28px 32px;
-        border: 2px solid #202a44;
-        background: #f9f9f9;
-        border-radius: 2px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        letter-spacing: -0.5px;
-      }
-
-      .info-box {
-        background: #f9f9f9;
-        border: 2px solid #202a44;
-        padding: 32px;
-        margin-bottom: 10px;
-        border-radius: 2px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      }
-
-      .info-box h3 {
-        font-size: 22px;
-        font-weight: 800;
-        margin-bottom: 16px;
-        letter-spacing: -0.4px;
-      }
-
-      .info-box p {
-        color: #202a44;
-        font-size: 16px;
-        line-height: 1.8;
-        font-weight: 500;
-        margin-bottom: 8px;
-      }
-
-      .phase-selection {
-        display: flex;
-        flex-direction: row;
-        gap: 24px;
-        align-items: center;
-        justify-content: center;
-        margin-top: 60px;
-        padding-bottom: 35px;
-      }
-
-      .back-button {
-        align-self: flex-start;
-        padding: 12px 24px;
-        font-size: 14px;
-        margin-bottom: 20px;
-      }
-
-      @media (max-width: 1400px) {
-        .houses-grid {
-          grid-template-columns: repeat(3, 1fr);
-        }
-      }
-
-      @media (max-width: 900px) {
-        .houses-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-
-        .phase-btn {
-          min-width: 100%;
-        }
-      }
-
-      @media (max-width: 600px) {
-        .houses-grid {
-          grid-template-columns: 1fr;
-        }
-
-        h1 {
-          font-size: 48px;
-        }
-
-        .controls {
-          gap: 12px;
-        }
-
-        button,
-        .file-input-label {
-          font-size: 14px;
-          padding: 14px 28px;
-        }
-
-        .phase-btn {
-          min-width: 100%;
-        }
-      }
+      footer { position: fixed; bottom: 0; left: 0; width: 100%; background: linear-gradient(to right, #ffffff, #f2f2f9); color: #1a2b56; text-align: center; font-size: 1rem; font-weight: 700; text-decoration: underline; padding: 8px 0; border-top: 2px solid #1a2b56; box-shadow: 0 -2px 6px rgba(0,0,0,0.08); z-index: 2000; }
     </style>
   </head>
   <body>
     <div class="container">
-      <!-- Phase Selection Page -->
+      <!-- Phase Selection -->
       <div id="phaseSelectionPage" class="page active">
         <div class="header">
           <h1>House Allocation System</h1>
           <div class="subtitle">Jurong Pioneer Junior College</div>
         </div>
+
         <div class="info-box">
           <h3>📋 Instructions</h3>
-          <p>
-            <strong>Phase 1 (24 Nov):</strong> Upload STAFF.csv and allocate KP
-            staff to houses. Save results as CSV.
-          </p>
-          <p>
-            <strong>Phase 2 (28 Nov):</strong> Upload Phase 1 results CSV and
-            allocate remaining positions. Download complete allocation.
-          </p>
-          <p style="margin-top: 16px; color: #202a44">
-            <strong>Note:</strong> All processes run locally on this device. No
-            data is stored externally.
-          </p>
+          <p><strong>Phase 1 (24 Nov):</strong> Upload <code>STAFF.csv</code> and allocate KP staff to houses. Save results as CSV.</p>
+          <p><strong>Phase 2 (28 Nov):</strong> Upload Phase 1 results and allocate remaining positions. Download complete allocation.</p>
+          <p style="margin-top:16px; color:#202a44"><strong>Note:</strong> All processes run locally on this device. No data is stored externally.</p>
         </div>
 
         <div class="phase-selection">
-          <button id="selectPhase1Btn" class="phase-btn">
-            🎲 Phase 1: KP Allocation (24 Nov)
-          </button>
-          <button id="selectPhase2Btn" class="phase-btn">
-            🎲 Phase 2: Complete Allocation (28 Nov)
-          </button>
+          <button id="selectPhase1Btn" class="phase-btn">🎲 Phase 1: KP Allocation (24 Nov)</button>
+          <button id="selectPhase2Btn" class="phase-btn">🎲 Phase 2: Complete Allocation (28 Nov)</button>
         </div>
       </div>
 
-      <!-- Phase 1 Page -->
+      <!-- Phase 1 -->
       <div id="phase1Page" class="page">
         <div class="header">
           <h1>House Allocation System</h1>
           <div class="subtitle">Jurong Pioneer Junior College</div>
         </div>
 
-        <button id="backToPhaseSelectionBtn" class="back-button">
-          ← Back to Phase Selection
-        </button>
+        <button id="backToPhaseSelectionBtn" class="back-button">← Back to Phase Selection</button>
 
         <div class="info-box">
           <h3>📋 Phase 1: KP Allocation</h3>
-          <p>Upload the STAFF.csv file to begin allocating KP staff.</p>
+          <p>Upload the <code>STAFF.csv</code> file to begin allocating KP staff.</p>
         </div>
 
         <div class="controls">
-          <div class="file-input-wrapper">
-            <input type="file" id="csvFilePhase1" accept=".csv" />
-            <label for="csvFilePhase1" class="file-input-label"
-              >📁 Upload CSV</label
-            >
+          <div class="file-input-wrapper" title="Upload staff CSV">
+            <label class="file-input-label" for="csvFilePhase1">📁 Upload CSV</label>
+            <input id="csvFilePhase1" type="file" accept=".csv,text/csv" aria-label="Upload staff CSV" />
           </div>
+          <button id="startPhase1Btn" class="secondary">🎲 Start Phase 1 Draw</button>
         </div>
 
-        <div id="statusPhase1" class="status" style="display: none"></div>
-        <div
-          id="phaseIndicatorPhase1"
-          class="phase-indicator"
-          style="display: none"
-        ></div>
-        <div class="controls">
-          <button id="startPhase1Btn" class="secondary">
-            🎲 Start Phase 1 Draw
-          </button>
-        </div>
+        <div id="statusPhase1" class="status" style="display:none" aria-live="polite"></div>
+        <div id="phaseIndicatorPhase1" class="phase-indicator" style="display:none"></div>
 
         <div id="resultsPhase1">
-          <div class="houses-grid" id="housesGridPhase1"></div>
-        </div>
+  <div class="houses-scroll">
+    <div class="houses-grid" id="housesGridPhase1"></div>
+  </div>
+</div>
 
-        <div class="controls" id="phase1ActionControls" style="display: none">
-          <button id="downloadPhase1Btn" class="secondary">
-            📥 Download Phase 1 Results (CSV)
-          </button>
+
+        <div class="controls" id="phase1ActionControls" style="display:none">
+          <button id="downloadPhase1Btn" class="secondary">📥 Download Phase 1 Results (CSV)</button>
         </div>
       </div>
 
-      <!-- Phase 2 Page -->
+      <!-- Phase 2 -->
       <div id="phase2Page" class="page">
         <div class="header">
           <h1>House Allocation System</h1>
           <div class="subtitle">Jurong Pioneer Junior College</div>
         </div>
 
-        <button id="backToPhaseSelectionBtn2" class="back-button">
-          ← Back to Phase Selection
-        </button>
+        <button id="backToPhaseSelectionBtn2" class="back-button">← Back to Phase Selection</button>
 
         <div class="info-box">
           <h3>📋 Phase 2: Complete Allocation</h3>
-          <p>
-            Upload the Phase 1 results CSV to allocate remaining staff
-            positions.
-          </p>
+          <p>Upload the Phase 1 results CSV to allocate remaining staff positions.</p>
         </div>
 
-        <!-- <CHANGE> Removed second file upload - now only Phase 1 results needed -->
         <div class="controls">
           <div class="file-input-wrapper">
-            <input type="file" id="phase1ResultsFile" accept=".csv" />
-            <label for="phase1ResultsFile" class="file-input-label"
-              >📁 Upload Phase 1 Results</label
-            >
+            <label class="file-input-label" for="phase1ResultsFile">📁 Upload Phase 1 Results</label>
+            <input id="phase1ResultsFile" type="file" accept=".csv,text/csv" aria-label="Upload phase 1 results CSV" />
           </div>
+          <button id="startPhase2Btn" class="secondary">🎲 Start Phase 2 Draw</button>
         </div>
 
-        <div class="controls">
-          <button id="startPhase2Btn" class="secondary">
-            🎲 Start Phase 2 Draw
-          </button>
-        </div>
+        <div id="statusPhase2" class="status" style="display:none" aria-live="polite"></div>
+        <div id="phaseIndicatorPhase2" class="phase-indicator" style="display:none"></div>
 
-        <div id="statusPhase2" class="status" style="display: none"></div>
-        <div
-          id="phaseIndicatorPhase2"
-          class="phase-indicator"
-          style="display: none"
-        ></div>
+       <div id="resultsPhase2">
+  <div class="houses-scroll">
+    <div class="houses-grid" id="housesGridPhase2"></div>
+  </div>
+</div>
 
-        <div id="resultsPhase2">
-          <div class="houses-grid" id="housesGridPhase2"></div>
-        </div>
 
-        <div class="controls" id="phase2ActionControls" style="display: none">
-          <button id="downloadPhase2Btn" class="secondary">
-            📥 Download Complete Results (CSV)
-          </button>
+        <div class="controls" id="phase2ActionControls" style="display:none">
+          <button id="downloadPhase2Btn" class="secondary">📥 Download Complete Results (CSV)</button>
         </div>
       </div>
-      <footer
-        style="
-          position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: linear-gradient(to right, #ffffff, #f2f2f9);
-            color: #1a2b56;
-            text-align: center;
-            font-size: 1rem;
-            font-weight: 700;
-            text-decoration: underline;
-            padding: 8px 0;
-            border-top: 2px solid #1a2b56;
-            box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
-            z-index: 2000;
-        "
-      >
-        <strong> Done by Han Jeong Seu, Caleb (25S22) </strong>
-      </footer>
+
+      <footer><strong> Done by Han Jeong Seu, Caleb (25S22) </strong></footer>
     </div>
 
-    <div id="animationScreen" class="animation-screen">
-      <div class="spinner"></div>
+    <div id="animationScreen" class="animation-screen" aria-hidden="true">
+      <div class="spinner" role="img" aria-label="Loading spinner"></div>
       <div class="animation-text">Drawing Houses...</div>
     </div>
 
     <script>
+      /* -------------------------
+         Config & globals
+         ------------------------- */
+      const ANIMATION_MS = 1500; // change this to make the spinner longer/shorter
       const houses = ["Aquila", "Aries", "Pavo", "Taurus", "Ursa", "Volans"];
 
-      let phase1Data = [];
-      let phase2Data = [];
+      let rawPhase1Data = [];   // data loaded from staff CSV (phase 1 input)
+      let allocatedData = [];   // data used for displaying allocation (phase1 or phase2 merged)
+      let phase2Data = [];      // data loaded from phase1 results for phase 2
       let currentPhase = null;
 
-      // Navigation
-      // document.getElementById('proceedBtn').addEventListener('click', goToPhaseSelection);
-      // document.getElementById('backToInstructionsBtn').addEventListener('click', goToInstructions);
-      document
-        .getElementById("backToPhaseSelectionBtn")
-        .addEventListener("click", goToPhaseSelection);
-      document
-        .getElementById("backToPhaseSelectionBtn2")
-        .addEventListener("click", goToPhaseSelection);
-      document
-        .getElementById("selectPhase1Btn")
-        .addEventListener("click", goToPhase1);
-      document
-        .getElementById("selectPhase2Btn")
-        .addEventListener("click", goToPhase2);
+      /* -------------------------
+         DOM wiring
+         ------------------------- */
+      document.getElementById("backToPhaseSelectionBtn").addEventListener("click", goToPhaseSelection);
+      document.getElementById("backToPhaseSelectionBtn2").addEventListener("click", goToPhaseSelection);
+      document.getElementById("selectPhase1Btn").addEventListener("click", goToPhase1);
+      document.getElementById("selectPhase2Btn").addEventListener("click", goToPhase2);
 
-      // Phase 1 Events
-      document
-        .getElementById("csvFilePhase1")
-        .addEventListener("change", (e) => handleFileUploadPhase1(e));
-      document
-        .getElementById("startPhase1Btn")
-        .addEventListener("click", () => startPhase1Draw());
-      document
-        .getElementById("downloadPhase1Btn")
-        .addEventListener("click", downloadPhase1CSV);
+      document.getElementById("csvFilePhase1").addEventListener("change", handleFileUploadPhase1);
+      document.getElementById("startPhase1Btn").addEventListener("click", startPhase1Draw);
+      document.getElementById("downloadPhase1Btn").addEventListener("click", downloadPhase1CSV);
 
-      // Phase 2 Events - <CHANGE> Now only needs Phase 1 results file
-      document
-        .getElementById("phase1ResultsFile")
-        .addEventListener("change", handlePhase1ResultsUpload);
-      document
-        .getElementById("startPhase2Btn")
-        .addEventListener("click", () => startPhase2Draw());
-      document
-        .getElementById("downloadPhase2Btn")
-        .addEventListener("click", downloadPhase2CSV);
+      document.getElementById("phase1ResultsFile").addEventListener("change", handlePhase1ResultsUpload);
+      document.getElementById("startPhase2Btn").addEventListener("click", startPhase2Draw);
+      document.getElementById("downloadPhase2Btn").addEventListener("click", downloadPhase2CSV);
 
-      function goToInstructions() {
-        switchPage("instructionsPage");
+      /* -------------------------
+         Navigation helpers
+         ------------------------- */
+      function switchPage(pageId) {
+        document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+        document.getElementById(pageId).classList.add("active");
+        window.scrollTo(0, 0);
       }
 
       function goToPhaseSelection() {
@@ -645,7 +237,8 @@
       }
 
       function goToPhase1() {
-        phase1Data = [];
+        rawPhase1Data = [];
+        allocatedData = [];
         phase2Data = [];
         document.getElementById("csvFilePhase1").value = "";
         document.getElementById("statusPhase1").style.display = "none";
@@ -656,7 +249,8 @@
       }
 
       function goToPhase2() {
-        phase1Data = [];
+        rawPhase1Data = [];
+        allocatedData = [];
         phase2Data = [];
         document.getElementById("phase1ResultsFile").value = "";
         document.getElementById("statusPhase2").style.display = "none";
@@ -666,111 +260,142 @@
         switchPage("phase2Page");
       }
 
-      function switchPage(pageId) {
-        document
-          .querySelectorAll(".page")
-          .forEach((p) => p.classList.remove("active"));
-        document.getElementById(pageId).classList.add("active");
-        window.scrollTo(0, 0);
+      /* -------------------------
+         File parsing (robust CSV)
+         - supports quoted fields containing commas
+         ------------------------- */
+      function csvToRows(text) {
+        // split into rows but keep quoted newlines intact by simple approach:
+        // We'll split on \n, then combine rows when quotes are unbalanced.
+        const rawLines = text.replace(/\r/g,'').split('\n');
+        const lines = [];
+        let buffer = '';
+        let inQuotes = false;
+        rawLines.forEach((ln, idx) => {
+          const quoteCount = (ln.match(/"/g) || []).length;
+          buffer += (buffer ? '\n' : '') + ln;
+          if (quoteCount % 2 === 1) { // odd -> toggles quote state
+            inQuotes = !inQuotes;
+          }
+          if (!inQuotes) {
+            lines.push(buffer);
+            buffer = '';
+          }
+        });
+        if (buffer) lines.push(buffer); // push any remainder
+        return lines;
       }
 
-      function handleFileUploadPhase1(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          parseCSVPhase1(e.target.result);
-        };
-        reader.readAsText(file);
+      function splitCSVLine(line) {
+        const fields = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i=0;i<line.length;i++) {
+          const ch = line[i];
+          if (ch === '"' ) {
+            if (inQuotes && i+1 < line.length && line[i+1] === '"') {
+              // escaped double quote
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === ',' && !inQuotes) {
+            fields.push(cur);
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        fields.push(cur);
+        return fields;
       }
 
       function parseCSVPhase1(text) {
-        const lines = text.trim().split("\n");
-        phase1Data = [];
-
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-
-          const values = line.split(",");
+        const rows = csvToRows(text).map(r => r.trim()).filter(r => r.length);
+        rawPhase1Data = [];
+        for (let i = 1; i < rows.length; i++) {
+          const values = splitCSVLine(rows[i]);
           if (values.length >= 4) {
-            phase1Data.push({
+            rawPhase1Data.push({
               sn: values[0].trim(),
               name: values[1].trim().replace(/^"|"$/g, ""),
               role: values[2].trim(),
               dept: values[3].trim(),
-              house: values[4] ? values[4].trim() : "",
+              house: values[4] ? values[4].trim() : ""
             });
           }
         }
-
-        showStatusPhase1(`✅ Loaded ${phase1Data.length} staff`);
+        showStatusPhase1(`✅ Loaded ${rawPhase1Data.length} staff from CSV`);
       }
 
-      // <CHANGE> Phase 2 now only uploads Phase 1 results CSV
-      function handlePhase1ResultsUpload(event) {
-        const file = event.target.files[0];
+      function handleFileUploadPhase1(e) {
+        const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = function (e) {
-          phase2Data = parsePhase2Input(e.target.result);
-          showStatusPhase2(
-            `✅ Loaded Phase 1 results: ${phase2Data.length} staff`
-          );
-        };
+        reader.onload = (ev) => parseCSVPhase1(ev.target.result);
         reader.readAsText(file);
       }
 
       function parsePhase2Input(text) {
-        const lines = text.trim().split("\n");
+        const rows = csvToRows(text).map(r => r.trim()).filter(r => r.length);
         const data = [];
-
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-
-          const values = line.split(",");
+        for (let i = 1; i < rows.length; i++) {
+          const values = splitCSVLine(rows[i]);
           if (values.length >= 4) {
             data.push({
               sn: values[0].trim(),
               name: values[1].trim().replace(/^"|"$/g, ""),
               role: values[2].trim(),
               dept: values[3].trim(),
-              house: values[4] ? values[4].trim() : "",
+              house: values[4] ? values[4].trim() : ""
             });
           }
         }
         return data;
       }
 
+      function handlePhase1ResultsUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          phase2Data = parsePhase2Input(ev.target.result);
+          showStatusPhase2(`✅ Loaded Phase 1 results: ${phase2Data.length} staff`);
+        };
+        reader.readAsText(file);
+      }
+
+      /* -------------------------
+         Status helpers
+         ------------------------- */
       function showStatusPhase1(msg) {
         const el = document.getElementById("statusPhase1");
         el.textContent = msg;
         el.style.display = "block";
       }
-
       function showStatusPhase2(msg) {
         const el = document.getElementById("statusPhase2");
         el.textContent = msg;
         el.style.display = "block";
       }
 
+      /* -------------------------
+         Draw / perform allocation
+         ------------------------- */
       function startPhase1Draw() {
-        if (!phase1Data.length) {
+        if (!rawPhase1Data.length) {
           showStatusPhase1("❌ Upload CSV first!");
           return;
         }
-
         currentPhase = 1;
         document.getElementById("animationScreen").classList.add("active");
-
         setTimeout(() => {
           performPhase1();
           document.getElementById("animationScreen").classList.remove("active");
           displayPhase1Results();
-        }, 7500);
+          document.getElementById("resultsPhase1").scrollIntoView({ behavior: "smooth", block: "start" });
+        }, ANIMATION_MS);
       }
 
       function startPhase2Draw() {
@@ -778,137 +403,132 @@
           showStatusPhase2("❌ Upload Phase 1 results first!");
           return;
         }
-
         currentPhase = 2;
         document.getElementById("animationScreen").classList.add("active");
-
         setTimeout(() => {
           performPhase2();
           document.getElementById("animationScreen").classList.remove("active");
           displayPhase2Results();
-        }, 7500);
+          document.getElementById("resultsPhase2").scrollIntoView({ behavior: "smooth", block: "start" }); // fixed to phase2
+        }, ANIMATION_MS);
       }
 
       function performPhase1() {
-        phase1Data = phase1Data.map((s) => ({ ...s }));
+        // copy input to allocatedData (we treat this as the working dataset)
+        allocatedData = rawPhase1Data.map(s => ({ ...s }));
 
-        const p = phase1Data.find((s) => s.role === "P");
-        if (p && !p.house) {
-          p.house = "Taurus";
-        }
+        // Place principal (role "P") into Taurus if not already set
+        const p = allocatedData.find(s => s.role === "P");
+        if (p && !p.house) p.house = "Taurus";
 
-        phase1Data
-          .filter((s) => s.role === "HM")
-          .forEach((hm) => {
-            if (!hm.house) {
-              const map = {
-                "Lee Wei Chai": "Volans",
-                "Tan Wang Ling": "Aquila",
-                "Tan Zhi Ai": "Ursa",
-                "Lim Yu Ching": "Pavo",
-                "Mohamed Osman B Rahamat": "Aries",
-                "Natarajan Usha": "Taurus",
-              };
-              hm.house = map[hm.name];
-            }
-          });
-
-        const vps = phase1Data.filter((s) => s.role === "VP" && !s.house);
-        shuffle(houses.filter((h) => h !== "Taurus"))
-          .slice(0, 3)
-          .forEach((h, i) => {
-            if (vps[i]) vps[i].house = h;
-          });
-
-        const vpHouses = vps.map((v) => v.house);
-        const yhs = phase1Data.filter((s) => s.role === "YH" && !s.house);
-        shuffle(houses.filter((h) => h !== "Taurus" && !vpHouses.includes(h)))
-          .slice(0, 2)
-          .forEach((h, i) => {
-            if (yhs[i]) yhs[i].house = h;
-          });
-
-        const hodCnt = {};
-        houses.forEach((h) => (hodCnt[h] = 0));
-        shuffle(phase1Data.filter((s) => s.role === "HOD" && !s.house)).forEach(
-          (hod) => {
-            const avail = houses.filter((h) => hodCnt[h] < 2);
-            if (avail.length) {
-              const h = avail[Math.floor(Math.random() * avail.length)];
-              hod.house = h;
-              hodCnt[h]++;
-            }
+        // Specific mapping for HMs (Head of something)
+        allocatedData.filter(s => s.role === "HM").forEach(hm => {
+          if (!hm.house) {
+            const map = {
+              "Lee Wei Chai": "Volans",
+              "Tan Wang Ling": "Aquila",
+              "Tan Zhi Ai": "Ursa",
+              "Lim Yu Ching": "Pavo",
+              "Mohamed Osman B Rahamat": "Aries",
+              "Natarajan Usha": "Taurus"
+            };
+            if (map[hm.name]) hm.house = map[hm.name];
           }
-        );
+        });
 
-        allocateByDept(
-          phase1Data.filter(
-            (s) => (s.role === "SH" || s.role === "ST") && !s.house
-          ),
-          false
-        );
+        // Assign VPs (random across non-Taurus houses)
+        const vps = allocatedData.filter(s => s.role === "VP" && !s.house);
+        shuffle(houses.filter(h => h !== "Taurus")).slice(0, 3).forEach((h, i) => {
+          if (vps[i]) vps[i].house = h;
+        });
+
+        // Assign YHs ensuring not to clash with VP houses
+        const vpHouses = vps.map(v => v.house);
+        const yhs = allocatedData.filter(s => s.role === "YH" && !s.house);
+        shuffle(houses.filter(h => h !== "Taurus" && !vpHouses.includes(h))).slice(0, 2).forEach((h, i) => {
+          if (yhs[i]) yhs[i].house = h;
+        });
+
+        // HODs: cap per-house to 2
+        const hodCnt = {};
+        houses.forEach(h => hodCnt[h] = 0);
+        shuffle(allocatedData.filter(s => s.role === "HOD" && !s.house)).forEach(hod => {
+          const avail = houses.filter(h => hodCnt[h] < 2);
+          if (avail.length) {
+            const choice = avail[Math.floor(Math.random() * avail.length)];
+            hod.house = choice;
+            hodCnt[choice]++;
+          }
+        });
+
+        // Allocate SH/ST and other staff by department
+        allocateByDept(allocatedData.filter(s => (s.role === "SH" || s.role === "ST") && !s.house), false);
 
         showStatusPhase1("✅ Phase 1 Complete!");
       }
 
       function performPhase2() {
-        // <CHANGE> Phase 2 now simply allocates unassigned staff from Phase 1 results
-        allocateByDept(
-          phase2Data.filter((s) => !s.house),
-          true
-        );
-        phase1Data = phase2Data;
-
+        // allocate unassigned staff from the uploaded Phase 1 results
+        // we treat phase2Data as the input for allocations
+        // ensure we have a copy to work with
+        allocatedData = phase2Data.map(s => ({ ...s }));
+        allocateByDept(allocatedData.filter(s => !s.house), true);
         showStatusPhase2("✅ Phase 2 Complete!");
       }
 
+      /* -------------------------
+         Department-balanced allocation
+         balance=true tries to equalize overall house counts
+         ------------------------- */
       function allocateByDept(staff, balance) {
         const groups = {};
-        staff.forEach((s) => {
+        staff.forEach(s => {
           if (!groups[s.dept]) groups[s.dept] = [];
           groups[s.dept].push(s);
         });
 
         Object.entries(groups).forEach(([dept, members]) => {
           const N = members.length;
+          // count existing dept members per house (from current allocatedData)
           const cnt = {};
-          houses.forEach((h) => {
-            cnt[h] = phase1Data.filter(
-              (m) => m.house === h && m.dept === dept
-            ).length;
+          houses.forEach(h => {
+            cnt[h] = allocatedData.filter(m => m.house === h && m.dept === dept).length;
           });
 
-          shuffle([...members]).forEach((m) => {
+          shuffle([...members]).forEach(m => {
             let h;
             if (N <= 6) {
-              const avail = houses.filter((x) => cnt[x] === 0);
-              h = avail.length
-                ? avail[Math.floor(Math.random() * avail.length)]
-                : houses[Math.floor(Math.random() * 6)];
+              const avail = houses.filter(x => cnt[x] === 0);
+              h = avail.length ? avail[Math.floor(Math.random() * avail.length)] : houses[Math.floor(Math.random() * houses.length)];
             } else {
               const max = Math.ceil(N / 6);
-              const avail = houses.filter((x) => cnt[x] < max);
+              const avail = houses.filter(x => cnt[x] < max);
               if (avail.length) {
                 if (balance) {
-                  const hc = avail.map((x) => ({
-                    h: x,
-                    c: phase1Data.filter((s) => s.house === x).length,
-                  }));
-                  hc.sort((a, b) => a.c - b.c);
+                  // prefer house with smallest overall total members
+                  const hc = avail.map(x => ({ h: x, c: allocatedData.filter(s => s.house === x).length }));
+                  hc.sort((a,b) => a.c - b.c);
                   h = hc[0].h;
                 } else {
                   h = avail[Math.floor(Math.random() * avail.length)];
                 }
               } else {
-                h = houses[Math.floor(Math.random() * 6)];
+                h = houses[Math.floor(Math.random() * houses.length)];
               }
             }
             m.house = h;
             cnt[h]++;
+            // ensure allocatedData is updated (if m is from phase2Data we need to reflect this change)
+            const idx = allocatedData.findIndex(x => x.sn === m.sn && x.name === m.name);
+            if (idx !== -1) allocatedData[idx] = { ...m };
+            else allocatedData.push({ ...m });
           });
         });
       }
 
+      /* -------------------------
+         Utility: Fisher-Yates shuffle
+         ------------------------- */
       function shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -917,29 +537,30 @@
         return arr;
       }
 
+      /* -------------------------
+         Display results
+         ------------------------- */
       function displayPhase1Results() {
         const ind = document.getElementById("phaseIndicatorPhase1");
-        const allocated = phase1Data.filter((s) => s.house).length;
-        ind.textContent = `🏛️ Phase 1: KP Allocation - ${allocated} staff`;
+        const allocatedCount = allocatedData.filter(s => s.house).length;
+        ind.textContent = `🏛️ Phase 1: KP Allocation - ${allocatedCount} staff`;
         ind.style.display = "block";
 
         const grid = document.getElementById("housesGridPhase1");
         grid.innerHTML = "";
 
-        houses.forEach((house, index) => {
-          const members = phase1Data
-            .filter((s) => s.house === house)
-            .sort((a, b) => a.name.localeCompare(b.name));
-
+        houses.forEach((house) => {
+          const members = allocatedData.filter(s => s.house === house).sort((a,b) => a.name.localeCompare(b.name));
           const col = document.createElement("div");
           col.className = "house-column";
 
           const hdr = document.createElement("div");
           hdr.className = "house-header";
+          // use an img if exists, otherwise just show name
           hdr.innerHTML = `
-      <img src="./${house}.png" alt="${house}" style="width:100%; max-height:200px; object-fit:cover; border-bottom:0px solid #fff;">
-      <div class="house-count">${members.length} staff</div>
-    `;
+            <img src="./${house}.png" alt="${house} house image" style="width:100%; max-height:200px; object-fit:cover; border-bottom:0;">
+            <div class="house-count">${members.length} staff</div>
+          `;
 
           const list = document.createElement("div");
           list.className = "house-members";
@@ -952,11 +573,11 @@
             empty.textContent = "No staff yet";
             list.appendChild(empty);
           } else {
-            members.forEach((s, memberIndex) => {
+            members.forEach((s, idx) => {
               const m = document.createElement("div");
               m.className = "member";
               m.textContent = s.name;
-              m.style.animationDelay = `${0.35 + memberIndex * 0.03}s`;
+              m.style.animationDelay = `${0.35 + idx * 0.03}s`;
               list.appendChild(m);
             });
           }
@@ -971,27 +592,24 @@
 
       function displayPhase2Results() {
         const ind = document.getElementById("phaseIndicatorPhase2");
-        const allocated = phase1Data.filter((s) => s.house).length;
-        ind.textContent = `🏛️ Phase 2: Complete - All ${allocated} staff`;
+        const allocatedCount = allocatedData.filter(s => s.house).length;
+        ind.textContent = `🏛️ Phase 2: Complete - All ${allocatedCount} staff`;
         ind.style.display = "block";
 
         const grid = document.getElementById("housesGridPhase2");
         grid.innerHTML = "";
 
-        houses.forEach((house, index) => {
-          const members = phase1Data
-            .filter((s) => s.house === house)
-            .sort((a, b) => a.name.localeCompare(b.name));
-
+        houses.forEach((house) => {
+          const members = allocatedData.filter(s => s.house === house).sort((a,b) => a.name.localeCompare(b.name));
           const col = document.createElement("div");
           col.className = "house-column";
 
           const hdr = document.createElement("div");
           hdr.className = "house-header";
           hdr.innerHTML = `
-      <img src="./${house}.png" alt="${house}" style="width:100%; max-height:200px; object-fit:cover; border-bottom:0px solid #fff;">
-      <div class="house-count">${members.length} staff</div>
-    `;
+            <img src="./${house}.png" alt="${house} house image" style="width:100%; max-height:200px; object-fit:cover; border-bottom:0;">
+            <div class="house-count">${members.length} staff</div>
+          `;
 
           const list = document.createElement("div");
           list.className = "house-members";
@@ -1004,11 +622,11 @@
             empty.textContent = "No staff yet";
             list.appendChild(empty);
           } else {
-            members.forEach((s, memberIndex) => {
+            members.forEach((s, idx) => {
               const m = document.createElement("div");
               m.className = "member";
               m.textContent = s.name;
-              m.style.animationDelay = `${0.35 + memberIndex * 0.03}s`;
+              m.style.animationDelay = `${0.35 + idx * 0.03}s`;
               list.appendChild(m);
             });
           }
@@ -1021,55 +639,47 @@
         document.getElementById("phase2ActionControls").style.display = "flex";
       }
 
+      /* -------------------------
+         CSV download
+         ------------------------- */
+      function downloadCSV(data, filenamePrefix) {
+        if (!data.length) return null;
+        let csv = "SN,Name,Role,Dept,House\n";
+        data.forEach(s => {
+          const name = s.name.includes(",") ? `"${s.name.replace(/"/g,'""')}"` : s.name.replace(/"/g,'""');
+          csv += `${s.sn},${name},${s.role},${s.dept},${s.house || ""}\n`;
+        });
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${filenamePrefix}_${new Date().toISOString().split("T")[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        return true;
+      }
+
       function downloadPhase1CSV() {
-        if (!phase1Data.length) {
+        if (!allocatedData.length) {
           showStatusPhase1("❌ No data!");
           return;
         }
-
-        let csv = "SN,Name,Role,Dept,House\n";
-        phase1Data.forEach((s) => {
-          const name = s.name.includes(",") ? `"${s.name}"` : s.name;
-          csv += `${s.sn},${name},${s.role},${s.dept},${s.house || ""}\n`;
-        });
-
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `allocation_phase1_${
-          new Date().toISOString().split("T")[0]
-        }.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        showStatusPhase1("✅ Downloaded!");
+        const ok = downloadCSV(allocatedData, "allocation_phase1");
+        if (ok) showStatusPhase1("✅ Downloaded!");
       }
 
       function downloadPhase2CSV() {
-        if (!phase1Data.length) {
+        if (!allocatedData.length) {
           showStatusPhase2("❌ No data!");
           return;
         }
-
-        let csv = "SN,Name,Role,Dept,House\n";
-        phase1Data.forEach((s) => {
-          const name = s.name.includes(",") ? `"${s.name}"` : s.name;
-          csv += `${s.sn},${name},${s.role},${s.dept},${s.house || ""}\n`;
-        });
-
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `allocation_phase2_${
-          new Date().toISOString().split("T")[0]
-        }.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        showStatusPhase2("✅ Downloaded!");
+        const ok = downloadCSV(allocatedData, "allocation_phase2");
+        if (ok) showStatusPhase2("✅ Downloaded!");
       }
+
+      /* -------------------------
+         End of script
+         ------------------------- */
     </script>
   </body>
 </html>
