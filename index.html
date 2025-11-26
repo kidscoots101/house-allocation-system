@@ -486,92 +486,169 @@
 
 
       /* -------------------------
-         Department-balanced allocation
-         balance=true tries to equalize overall house counts
-         ------------------------- */
-      function allocateByDept(staff, balance) {
+   Department-balanced allocation (revised)
+   - computes final per-house targets so final range max-min <= 2
+   - enforces dept quotas exactly; only relaxes when impossible
+   - respects HOD cap (<=2) and Phase1 fixed placements in allocatedData
+   ------------------------- */
+function allocateByDept(staff, balance) {
+  // Configurable fallback HOD limit
+  const HOD_LIMIT = 2;
+
+  // Shuffle incoming staff to randomize order
   shuffle(staff);
 
-  // Current per-house totals (used only for tie-breaking)
+  // Current global totals (includes Phase 1 fixed placements)
   const currentTotals = {};
-  houses.forEach(
-    h => (currentTotals[h] = allocatedData.filter(x => x.house === h).length)
-  );
+  houses.forEach(h => currentTotals[h] = allocatedData.filter(x => x.house === h).length);
 
-  // Track HOD per-house caps
+  // HOD tracker
   const hodCounts = {};
-  houses.forEach(
-    h => (hodCounts[h] = allocatedData.filter(x => x.house === h && x.role === "HOD").length)
-  );
+  houses.forEach(h => hodCounts[h] = allocatedData.filter(x => x.house === h && x.role === 'HOD').length);
 
-  // Group by department
+  // Group staff by department
   const groups = {};
   staff.forEach(s => {
     if (!groups[s.dept]) groups[s.dept] = [];
     groups[s.dept].push(s);
   });
 
+  // ----- Compute final target totals for houses so that max-min <= 2 -----
+  // total people after phase2
+  const currentlyAssigned = houses.reduce((sum, h) => sum + (currentTotals[h] || 0), 0);
+  const totalPhase2 = staff.length;
+  const totalFinal = currentlyAssigned + totalPhase2;
+
+  // base + remainder distribution (randomized which houses get the +1)
+  const base = Math.floor(totalFinal / houses.length);
+  const remainder = totalFinal % houses.length;
+
+  // start with base for every house
+  const targetTotals = {};
+  houses.forEach(h => targetTotals[h] = base);
+
+  // give +1 to a random subset of houses (remainder size)
+  const remainderOrder = shuffle([...houses]);
+  for (let i = 0; i < remainder; i++) {
+    targetTotals[remainderOrder[i]] += 1;
+  }
+
+  // Ensure targetTotals are at least currentTotals (because Phase1 may have already exceeded base)
+  // If any house already exceeds its target, raise other houses until the sum matches totalFinal
+  let sumTargets = houses.reduce((s, h) => s + targetTotals[h], 0);
+  // first, make sure target >= current
+  houses.forEach(h => {
+    if ((currentTotals[h] || 0) > targetTotals[h]) {
+      targetTotals[h] = currentTotals[h];
+    }
+  });
+  // now increment smallest-target houses until totals sum to totalFinal
+  const makeSumMatch = () => {
+    sumTargets = houses.reduce((s, h) => s + targetTotals[h], 0);
+    while (sumTargets < totalFinal) {
+      // find houses with minimum targetTotals
+      const minVal = Math.min(...houses.map(h => targetTotals[h]));
+      const minHouses = houses.filter(h => targetTotals[h] === minVal);
+      const pick = minHouses[Math.floor(Math.random() * minHouses.length)];
+      targetTotals[pick] += 1;
+      sumTargets += 1;
+    }
+  };
+  makeSumMatch();
+
+  // ---- Now allocate department-by-department ----
   Object.entries(groups).forEach(([dept, members]) => {
+    // randomize within department
     shuffle(members);
 
-    // Compute dept-specific quota (e.g., 15 -> 2,2,2,3,3,3)
-    const deptBase = Math.floor(members.length / houses.length);
-    let deptRemainder = members.length % houses.length;
+    // compute dept quota: base + remainder distributed to a random subset of houses
+    const deptTotal = members.length;
+    const deptBase = Math.floor(deptTotal / houses.length);
+    const deptRem = deptTotal % houses.length;
 
     const deptQuota = {};
-    const quotaOrder = shuffle([...houses]);
-    houses.forEach(h => (deptQuota[h] = deptBase));
-    for (let i = 0; i < deptRemainder; i++) deptQuota[quotaOrder[i]] += 1;
+    const quotaOrder = shuffle([...houses]); // randomized which houses get the +1
+    houses.forEach(h => deptQuota[h] = deptBase);
+    for (let i = 0; i < deptRem; i++) deptQuota[quotaOrder[i]] += 1;
 
-    // Track current counts for this dept
+    // existing dept counts per house (includes already allocatedData)
     const deptPerHouse = {};
-    houses.forEach(
-      h => (deptPerHouse[h] = allocatedData.filter(x => x.dept === dept && x.house === h).length)
-    );
+    houses.forEach(h => deptPerHouse[h] = allocatedData.filter(x => x.dept === dept && x.house === h).length);
 
-    members.forEach(m => {
-      // Valid houses = those below dept quota
-      let candidates = houses.filter(h => deptPerHouse[h] < deptQuota[h]);
+    // allocate every member in this dept
+    members.forEach(member => {
+      // Helper to apply HOD constraint to candidate set
+      const applyHodConstraint = (cand) => {
+        if (member.role === 'HOD') {
+          const hodCandidates = cand.filter(h => (hodCounts[h] || 0) < HOD_LIMIT);
+          if (hodCandidates.length) return hodCandidates;
+          // if no candidate passes HOD limit, return original cand (we'll fall back later)
+        }
+        return cand;
+      };
 
-      // Enforce HOD limit if applicable
-      if (m.role === "HOD") {
-        const hodCandidates = candidates.filter(h => (hodCounts[h] || 0) < 2);
-        if (hodCandidates.length) candidates = hodCandidates;
+      // Build candidate sets in priority order.
+      // Priority A: houses under deptQuota AND under targetTotals (preferred)
+      let candidates = houses.filter(h => deptPerHouse[h] < deptQuota[h] && (currentTotals[h] || 0) < targetTotals[h]);
+      candidates = applyHodConstraint(candidates);
+
+      // Priority B: houses under deptQuota (ignore targetTotals) — keep dept quotas exact if possible
+      if (!candidates.length) {
+        candidates = houses.filter(h => deptPerHouse[h] < deptQuota[h]);
+        candidates = applyHodConstraint(candidates);
       }
 
-      // Fallback if all houses full for dept (rare)
+      // Priority C: houses under targetTotals (ignore deptQuota) — keep global balance
+      if (!candidates.length) {
+        candidates = houses.filter(h => (currentTotals[h] || 0) < targetTotals[h]);
+        candidates = applyHodConstraint(candidates);
+      }
+
+      // Priority D: any house that doesn't violate HOD (if possible)
+      if (!candidates.length) {
+        candidates = houses.filter(h => {
+          if (member.role === 'HOD') return (hodCounts[h] || 0) < HOD_LIMIT;
+          return true;
+        });
+      }
+
+      // Ultimate fallback: any house
       if (!candidates.length) candidates = [...houses];
 
-      // Sort candidates: first by deptPerHouse, then optionally by total balance
+      // Sorting preference:
+      // 1) fill dept quota first (lowest deptPerHouse)
+      // 2) then prefer houses with lowest currentTotals (to meet global balance)
       candidates.sort((a, b) => {
-        const diff = deptPerHouse[a] - deptPerHouse[b];
-        if (diff !== 0) return diff;
-        // Secondary: prefer lower total headcount if balance flag set
-        return balance ? currentTotals[a] - currentTotals[b] : 0;
+        const da = deptPerHouse[a], db = deptPerHouse[b];
+        if (da !== db) return da - db;
+        const ta = currentTotals[a] || 0, tb = currentTotals[b] || 0;
+        return ta - tb;
       });
 
-      // Choose one of the lowest equally-filled houses
-      const minVal = deptPerHouse[candidates[0]];
-      const tied = candidates.filter(h => deptPerHouse[h] === minVal);
+      // pick randomly among the tied lowest deptPerHouse
+      const bestDeptCount = deptPerHouse[candidates[0]];
+      const tied = candidates.filter(h => deptPerHouse[h] === bestDeptCount);
       const chosen = tied[Math.floor(Math.random() * tied.length)];
 
-      // Assign
-      m.house = chosen;
-      if (balance) m.generatedInPhase2 = true;
+      // assign member
+      member.house = chosen;
+      if (balance) member.generatedInPhase2 = true;
 
-      const idx = allocatedData.findIndex(x => x.sn === m.sn && x.name === m.name);
-      if (idx !== -1) allocatedData[idx] = { ...m };
-      else allocatedData.push({ ...m });
+      // update allocatedData (replace or push)
+      const idx = allocatedData.findIndex(x => x.sn === member.sn && x.name === member.name);
+      if (idx !== -1) allocatedData[idx] = { ...member };
+      else allocatedData.push({ ...member });
 
-      // Update counts
-      deptPerHouse[chosen]++;
-      currentTotals[chosen]++;
-      if (m.role === "HOD") hodCounts[chosen]++;
-    });
-  });
+      // update counters
+      deptPerHouse[chosen] = (deptPerHouse[chosen] || 0) + 1;
+      currentTotals[chosen] = (currentTotals[chosen] || 0) + 1;
+      if (member.role === 'HOD') hodCounts[chosen] = (hodCounts[chosen] || 0) + 1;
+
+      // If we overshot a targetTotals[chosen] (rare, only if forced), we don't immediately try to rebalance here:
+      // the precomputed targetTotals + the candidate prioritization minimize such occurrences.
+    }); // end members.forEach
+  }); // end Object.entries
 }
-
-
 
          /* -------------------------
          Utility: Fisher-Yates shuffle
